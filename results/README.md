@@ -43,7 +43,7 @@ phase treatment. `runs.csv` names that run in its `vacuum_run` column. The varia
 | `injection_lnb.json` | first campaign: 50 vacuum injections into off-source noise, with masses not redshifted (Sec. IV.F). Each injection's parameters and relative-binning ln B, raw. |
 | `injection_sr_lnb.json` | the superradiance subset, 13 injections, raw |
 | `injection_virgo.json` | each injection's exact ln B for three networks: H1+L1; H1+L1+V1; and H1+L1+V1 with the event's BayesWave spectra. Includes the correction, the log-weight scatter and the effective sample size (script 30). |
-| `*_det.json` | the same for the second campaign, whose masses are redshifted |
+| `*_det.json` | the same for the second campaign, whose masses are redshifted (added once that campaign is complete) |
 
 ## Figures
 

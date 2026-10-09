@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+# written to the repository root when the analysis is rerun
+/outdir/
+/data_cache/
+/figures/
+/logs/
+/*.json
+/*.log
+/paper_appB_table.tex

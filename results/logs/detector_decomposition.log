@@ -1,0 +1,46 @@
+
+H1+L1, Welch PSDs: optimal SNR H1 7.0, L1 10.7; vacuum <ln L_d> H1 +28.7, L1 +55.0
+  residual power / expectation, mean/median, 20-30, 30-50, 50-100, 100-300, 300-1024 Hz
+    H1  0.90/0.82  1.00/0.80  1.05/1.01  0.97/0.99  4.70/1.00
+    L1  1.24/1.54  1.05/1.05  0.99/1.01  0.90/0.89  4.68/1.02
+  gw190728_env: posterior-mean ln L_d, environment - vacuum  [w_d, SNR^2 share]
+    H1  +1.40 +- 0.10   [ 24%,  30%]
+    L1  -0.47 +- 0.15   [ 76%,  70%]
+    all +0.92
+  gw190728_env_sr_eq9_taud1e6_rho2e8: posterior-mean ln L_d, environment - vacuum  [w_d, SNR^2 share]
+    H1  +1.13 +- 0.11   [ 24%,  30%]
+    L1  -0.48 +- 0.16   [ 76%,  70%]
+    all +0.65
+
+H1+L1+V1, Welch PSDs: optimal SNR H1 7.1, L1 10.6, V1 1.9; vacuum <ln L_d> H1 +29.0, L1 +55.0, V1 +1.7
+  residual power / expectation, mean/median, 20-30, 30-50, 50-100, 100-300, 300-1024 Hz
+    H1  0.89/0.84  1.00/0.80  1.05/1.04  0.97/0.99  4.70/1.00
+    L1  1.24/1.64  1.06/1.08  0.99/1.02  0.90/0.90  4.68/1.02
+    V1  0.92/0.93  0.90/0.80  0.92/0.88  3.68/0.99  7.97/1.03
+  gw190728_env_hlv: posterior-mean ln L_d, environment - vacuum  [w_d, SNR^2 share]
+    H1  +1.33 +- 0.11   [ 22%,  30%]
+    L1  -0.47 +- 0.15   [ 76%,  68%]
+    V1  +1.81 +- 0.09   [  3%,   2%]
+    all +2.66
+
+H1+L1+V1, GWTC-2.1 PSDs: optimal SNR H1 6.7, L1 10.3, V1 1.9; vacuum <ln L_d> H1 +26.0, L1 +51.8, V1 +1.5
+  residual power / expectation, mean/median, 20-30, 30-50, 50-100, 100-300, 300-1024 Hz
+    H1  0.96/1.06  1.01/0.86  0.93/0.88  0.95/0.97  1.23/1.00
+    L1  0.75/0.90  1.10/1.06  0.89/0.92  0.90/0.88  1.24/1.00
+    V1  0.89/0.83  0.90/0.86  0.96/0.88  1.34/0.96  1.72/1.07
+  gw190728_env_hlv_gwtc21psd: posterior-mean ln L_d, environment - vacuum  [w_d, SNR^2 share]
+    H1  +1.83 +- 0.10   [ 24%,  29%]
+    L1  +1.83 +- 0.16   [ 74%,  69%]
+    V1  +0.97 +- 0.08   [  3%,   2%]
+    all +4.63
+  gw190728_env_hlv_gwtc21psd_sr_eq9_taud1e6_rho2e8: posterior-mean ln L_d, environment - vacuum  [w_d, SNR^2 share]
+    H1  +1.76 +- 0.11   [ 24%,  29%]
+    L1  +1.70 +- 0.16   [ 74%,  69%]
+    V1  +1.06 +- 0.08   [  3%,   2%]
+    all +4.52
+gw190728_vacuum                          ln(L_numerical / L_analytic): mean +0.522 sd 0.682  ->  ln Z ratio +0.816 +- 0.168
+gw190728_env_seed1                       ln(L_numerical / L_analytic): mean -0.325 sd 1.565  ->  ln Z ratio +0.493 +- 0.246
+gw190728_env_sr_eq9_taud1e6_rho2e8       ln(L_numerical / L_analytic): mean -0.726 sd 1.459  ->  ln Z ratio -0.161 +- 0.134
+error of analytic phase marginalisation in ln B, agnostic: +0.323 +- 0.298
+error of analytic phase marginalisation in ln B, superradiance: +0.977 +- 0.215
+=== done

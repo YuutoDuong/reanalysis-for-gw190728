@@ -1,0 +1,3 @@
+nessai                       ln Z +0.089 +- 0.158   exact +0.090   error -0.00
+dynesty acceptance-walk 60   ln Z -0.091 +- 0.190   exact +0.090   error -0.18
+done

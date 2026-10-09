@@ -1,0 +1,9 @@
+  m_tot = out["chirp_mass"] * (1.0 + q) ** 1.2 / q**0.6   # detector frame
+
+
+agnostic       dynesty ln Z +1.231 +- 0.184   exact +0.090   error +1.14
+  m_tot = out["chirp_mass"] * (1.0 + q) ** 1.2 / q**0.6   # detector frame
+
+
+superradiance  dynesty ln Z +3.595 +- 0.180   exact +2.377   error +1.22
+rise: dynesty +2.36, exact +2.29; residual +0.08 +- 0.26
