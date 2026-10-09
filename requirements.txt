@@ -1,0 +1,17 @@
+# Versions the analysis was run with (Python 3.14.4, Ubuntu under WSL2).
+bilby==2.8.1
+dynesty==3.0.0
+lalsuite==7.26.15
+gwpy==4.0.1
+gwosc==0.8.3
+pesummary==1.7.0
+numpy==2.3.5
+scipy==1.18.0
+pandas==3.0.3
+h5py==3.16.0
+matplotlib==3.10.9
+corner==2.3.0
+
+# Optional, for the sampler comparison (scripts 04 and 18):
+# nessai==0.15.2       installs PyTorch
+# pymultinest==2.12    needs the MultiNest library, built from source
