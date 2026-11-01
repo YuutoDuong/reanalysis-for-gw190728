@@ -1,10 +1,14 @@
 """Section III.B validation -- no data or LAL required (numpy + matplotlib).
 
 Left: dephasing at GW190728-like masses across the density prior range.
-Right: dependence on alpha at fixed density, plus the Roy et al. Fig. 1
-NR anchor configuration (60 Msun equal-mass, alpha = 0.43,
-rho_phi = 8.6e5 g/cm^3), which produced a visible frequency-chirp
-acceleration over the last NR orbits and ln B = 3.8 on reinjection.
+Right: dependence on alpha at fixed density.
+
+Roy et al.'s numerical-relativity waveform (60 Msun, equal masses,
+alpha = 0.43) is not drawn: its density near the binary is quoted only as
+a range, 10^7.3-10^8.3 g/cm^3 (the 8.6e5 of their Fig. 1 is the value at
+the edge of the simulation box), and beta ~ 2 there, outside the regime
+of the coupling function.  scripts/checks/roy_figures.py compares the
+model with their results instead.
 """
 
 import sys
@@ -33,10 +37,6 @@ for alpha in (0.05, 0.1, 0.2, 0.4):
     ax2.loglog(f, np.abs(dpsi),
                label=rf"$\alpha={alpha}$ ($\mu_s$={scalar_mass_ev(alpha, M1 + M2):.1e} eV)")
 
-f_nr = np.geomspace(20.0, 220.0, 400)
-dpsi_nr = delta_psi_env(f_nr, 30.0, 30.0, alpha_cloud=0.43, rho_phi=8.6e5)
-ax2.loglog(f_nr, np.abs(dpsi_nr), "k--",
-           label=r"Roy Fig. 1: $60\,M_\odot$, $\alpha=0.43$")
 ax2.set_title(r"$\bar\rho_\phi=10^5$ g/cm$^3$, varying $\alpha$")
 
 for ax in (ax1, ax2):
@@ -54,6 +54,3 @@ ax1.set_ylabel(r"$|\delta\Psi_{\rm env}(f)|$ [rad]")
 Path("figures").mkdir(exist_ok=True)
 fig.savefig("figures/validation_dephasing.png", dpi=200, bbox_inches="tight")
 print("figures/validation_dephasing.png written.")
-print("Anchor check: the 60 Msun / alpha=0.43 / 8.6e5 g/cm^3 curve should "
-      "give O(1-10) rad of accumulated inspiral dephasing, consistent with "
-      "the visible NR chirp acceleration in Roy et al. Fig. 1.")

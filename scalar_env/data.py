@@ -17,7 +17,7 @@ import numpy as np
 # target; the extended list favours low mass / moderate q / decent SNR,
 # where the in-band inspiral is long enough for environmental dephasing.
 EVENTS = {
-    "GW190728_064510": dict(duration=8),    # primary target (Roy et al.)
+    "GW190728_064510": dict(duration=8, gps=1248331528.5),   # primary target (Roy et al.)
     "GW190814":        dict(duration=16),   # flagged by Roy et al.
     "GW190924_021846": dict(duration=16),
     "GW191129_134029": dict(duration=16),
@@ -43,11 +43,41 @@ CATALOGUE = {"GW190728_064510":
              "IGWN-GWTC2p1-v2-GW190728_064510_PEDataRelease_mixed_cosmo.h5"}
 
 
+def _gps(event):
+    """GPS time of an event: from EVENTS where given, so that GW190728's
+    analyses need no connection to GWOSC, else from GWOSC's catalogue."""
+    if "gps" in EVENTS.get(event, {}):
+        return EVENTS[event]["gps"]
+    from gwosc.datasets import event_gps
+
+    return event_gps(event)
+
+
+def _cached_file(detector, start, end):
+    """A bulk GWOSC strain file of the detector, already in the local
+    download cache, that covers [start, end).  Reading it needs no
+    connection to GWOSC, whose address lookup otherwise precedes every
+    read (on 2026-10-24 GWOSC was unreachable from here for hours)."""
+    import re
+    from astropy.utils.data import download_file, get_cached_urls
+
+    for url in get_cached_urls():
+        m = re.search(rf"/archive/data/.+/{detector[0]}-{detector}_GWOSC_\w*4KHZ\w*-(\d+)-(\d+)\.hdf5$", url)
+        if m and int(m[1]) <= start and end <= int(m[1]) + int(m[2]):
+            return download_file(url, cache=True)
+    return None
+
+
 def _strain(detector, start, end, attempts=4, wait=60):
-    """GWOSC open data, retried: downloads fail transiently (timeouts,
-    truncated files) and a multi-day pipeline should not die of one."""
+    """GWOSC open data: read from a cached bulk file when one covers the
+    span, else fetched and retried, since downloads fail transiently
+    (timeouts, truncated files) and a multi-day pipeline should not die
+    of one."""
     from gwpy.timeseries import TimeSeries
 
+    local = _cached_file(detector, start, end)
+    if local:
+        return TimeSeries.read(local, format="hdf5.gwosc", start=start, end=end)
     for attempt in range(attempts):
         try:
             return TimeSeries.fetch_open_data(detector, start, end,
@@ -79,7 +109,6 @@ def fetch_event(event, duration=None, detectors=DETECTORS, psd_fftlength=4,
     and H1+L1+V1 variants silently reloaded the H1+L1 data.
     """
     import bilby
-    from gwosc.datasets import event_gps
 
     duration = duration or EVENTS[event]["duration"]
     name = f"{event}_{duration}s_fft{psd_fftlength}_{''.join(detectors)}"
@@ -92,7 +121,7 @@ def fetch_event(event, duration=None, detectors=DETECTORS, psd_fftlength=4,
         with open(cache, "rb") as f:
             return pickle.load(f)
 
-    trigger = event_gps(event)
+    trigger = _gps(event)
     end = trigger + 2.0                       # post-trigger padding
     start = end - duration
 
@@ -130,9 +159,8 @@ def fetch_off_source_noise(event, offset, duration, detectors=DETECTORS,
     astrophysical signal, into which simulated vacuum signals are injected.
     """
     import bilby
-    from gwosc.datasets import event_gps
 
-    start = event_gps(event) + offset
+    start = _gps(event) + offset
     ifos = bilby.gw.detector.InterferometerList([])
     for name in detectors:
         ifo = bilby.gw.detector.get_empty_interferometer(name)

@@ -3,19 +3,21 @@
 The 50-injection campaign (script 05) calibrates the *agnostic* ln B.
 Roy et al.'s headline ln B ~ 3.5 instead uses their superradiance priors
 (SM Eqs. 9-10), so the background for that statistic is untested.  This
-script re-analyses a selected subset of the same vacuum injections --
-the highest agnostic ln B draws plus a stratified sample -- under the
+script re-analyses the injections as loud as GW190728 (network SNR within
+2.5 of its 12.7, the glitch segment excluded: 15 of 50) under the
 superradiance prior at tau_d = 10^6 yr (their headline configuration).
+A vacuum signal's ln B is set mostly by its loudness, so these are the
+event's own background under that prior; they include the injections
+whose agnostic ln B reaches the event's.  For the real GW190728 the prior
+raises ln B from -1.29 (agnostic) to -0.03 as sampled (tau_d = 1e6 yr,
+rho_max = 2e8), versus their 3.5.
 
-The question it answers is mechanistic rather than a rate: does the SR
-prior amplify or suppress noise fluctuations that already look
-environmental?  For the real GW190728 it raises ln B from -1.29
-(agnostic) to -0.03 (tau_d = 1e6 yr, rho_max = 2e8), versus their 3.5.
-
-Runs the redshifted (second) campaign's subset; the first campaign's is
-kept in injection_sr_lnb.json.  Cached vacuum runs are reused, so only ~13
+Runs the redshifted (second) campaign's subset.  The first campaign's,
+the highest agnostic draws plus a stratified sample, which asked whether
+the prior amplifies fluctuations that already look environmental, is kept
+in injection_sr_lnb.json.  Cached vacuum runs are reused, so only the 15
 environmental runs execute.
-Expected wall time: ~1.5-2.5 days; restartable at any point.
+Expected wall time: ~2 days; restartable at any point.
 """
 
 import sys
@@ -23,7 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[1]))
 from scalar_env.injections import (run_sr_campaign, plot_sr_comparison,
-                                   false_alarm_probability)
+                                   false_alarm_probability, matched_keys)
 
 TAU_D_YR = 1e6          # Roy et al.'s headline delay time
 OBSERVED_SR = -0.03     # our GW190728 ln B under the same SR prior and box
@@ -31,7 +33,7 @@ OBSERVED_SR = -0.03     # our GW190728 ln B under the same SR prior and box
                         # raw, like the campaign values (paper: +0.18 to all,
                         # figure via script 11)
 
-results = run_sr_campaign(tau_d_yr=TAU_D_YR)
+results = run_sr_campaign(tau_d_yr=TAU_D_YR, keys=matched_keys("_det"))
 
 sr = [v["lnb_sr"] for v in results.values()]
 agnostic = [v["lnb_agnostic"] for v in results.values()]

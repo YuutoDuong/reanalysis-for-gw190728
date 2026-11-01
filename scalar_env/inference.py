@@ -10,6 +10,12 @@ Likelihood: relative-binning GravitationalWaveTransient (Zackay et al.
 2018) with distance + phase marginalisation -- the speedup that makes
 laptop-scale nested sampling possible.  Evidence: ln Z from dynesty
 (default), pymultinest or nessai for the sampler-comparison test.
+
+Two approximations make sampling fast: relative binning, and the
+environmental correction of the dominant harmonic applied to all of them
+(waveform.scalar_cloud_bbh_dominant_mode).  Neither enters a quoted
+number: exact_likelihood has the full frequency grid and the correction
+harmonic by harmonic, and every evidence is reweighted to it (script 17).
 """
 
 import functools
@@ -19,7 +25,7 @@ from pathlib import Path
 import numpy as np
 
 from . import data, priors as prior_module
-from .waveform import scalar_cloud_bbh
+from .waveform import scalar_cloud_bbh, scalar_cloud_bbh_dominant_mode
 
 OUTDIR = Path("outdir")
 
@@ -67,7 +73,7 @@ def build_waveform_generator(config, duration):
     import bilby
 
     if config.model == "environment":
-        source_model = scalar_cloud_bbh
+        source_model = scalar_cloud_bbh_dominant_mode
     else:
         source_model = bilby.gw.source.lal_binary_black_hole_relative_binning
 
@@ -158,9 +164,10 @@ def build_likelihood(config, ifos, trigger_time, priors,
 
 
 def exact_likelihood(config, distance_lookup=None, ifos=None, trigger_time=None):
-    """The full-grid likelihood that relative binning approximates, with
-    the run's own data, approximant and marginalisations (or the given
-    ifos, e.g. with a modified PSD).
+    """The likelihood every quoted evidence refers to: the full frequency
+    grid and, for the environmental model, the correction harmonic by
+    harmonic.  It has the run's own data, approximant and
+    marginalisations (or the given ifos, e.g. with a modified PSD).
 
     distance_lookup: file for bilby's distance-marginalisation table; give
     a private one when other processes may be reading the default file.
@@ -187,6 +194,27 @@ def exact_likelihood(config, distance_lookup=None, ifos=None, trigger_time=None)
         distance_marginalization=True,
         phase_marginalization=config.phase_marginalization,
         distance_marginalization_lookup_table=distance_lookup)
+
+
+def exact_posterior(label, size=10_000, samples="reweighted_samples.npz"):
+    """Posterior of a finished run under exact_likelihood, as equally
+    weighted samples.
+
+    Script 17 evaluated the exact likelihood at a subset of the run's
+    samples and stored each one's ln(L_exact / L_fast).  Those samples
+    are redrawn here in proportion to that weight (with replacement, and
+    more often than there are samples, so the redrawing adds no noise of
+    its own), and their log_likelihood column is the exact one.
+    """
+    import bilby
+
+    rows, ln_weight = np.load(samples)[label].T
+    weight = np.exp(ln_weight - ln_weight.max())
+    posterior = bilby.result.read_in_result(
+        str(OUTDIR / label / f"{label}_result.json")).posterior.iloc[rows.astype(int)].copy()
+    posterior["log_likelihood"] += ln_weight
+    drawn = np.random.default_rng(0).choice(len(rows), size, p=weight / weight.sum())
+    return posterior.iloc[drawn].reset_index(drop=True)
 
 
 def _ensure_fork_start_method():

@@ -4,7 +4,7 @@ scalar-field dark-matter environmental waveform model.
 
 Module map (sections of the paper):
 
-    waveform.py    III        delta_psi_env(f) + custom Bilby source model
+    waveform.py    III        delta_psi_env(f) + custom Bilby source models
     data.py        IV.A       GWOSC strain download, PSD, conditioning
     priors.py      IV.D       vacuum + environmental priors, superradiance
     inference.py   IV.B-E     likelihood (relative binning), sampling, ln B

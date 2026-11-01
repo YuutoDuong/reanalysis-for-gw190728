@@ -11,7 +11,7 @@ import numpy as np
 sys.path.insert(0, ".")
 import bilby
 bilby.core.utils.logger.setLevel("ERROR")
-from scalar_env.inference import RunConfig, build_priors
+from scalar_env.inference import RunConfig, build_priors, exact_posterior
 
 TRIG = 1248331528.5
 KEYS = ("chirp_mass", "mass_ratio", "alpha_cloud", "rho_phi")
@@ -26,8 +26,8 @@ def inside(pri, post):
 print("== P = fraction of each agnostic posterior inside the tau_d = 1e6 SR region")
 for l in ("gw190728_env", "gw190728_env_seed1", "gw190728_env_seed2",
           "gw190728_env_rho_max2e8", "gw190728_env_pymultinest", "gw190728_env_nessai"):
-    p = res(l).posterior
-    print(f"  {l:28s} n={len(p):6d}  P = {inside(sr, p).mean():.3f}")
+    p = exact_posterior(l)          # of the exact likelihood (script 17)
+    print(f"  {l:28s} P = {inside(sr, p).mean():.3f}")
 
 print("== f, method 1: independent draws of the four keys (script 08)")
 rng = np.random.default_rng(3)

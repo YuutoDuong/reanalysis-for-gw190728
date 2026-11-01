@@ -1,0 +1,28 @@
+agnostic, welch: zero lag +1.18 (ESS 50)
+  all                18 of 2537: p = 0.0071 (1 in 141); sd 0.74; at least one of 28 events 0.18
+  no glitch          16 of 2402: p = 0.0067 (1 in 150); sd 0.71; at least one of 28 events 0.17
+  ESS >= 30           8 of 1854: p = 0.0043 (1 in 232); sd 0.50; at least one of 28 events 0.11
+  both                8 of 1762: p = 0.0045 (1 in 220); sd 0.50; at least one of 28 events 0.12
+  both, within 1 h    1 of  385: p = 0.0026 (1 in 385); sd 0.51; at least one of 28 events 0.07
+  of the 18 slides reaching it, 10 have ESS < 30 and 2 a glitch
+agnostic, gwtc21: zero lag +2.61 (ESS 37)
+  all                34 of 2537: p = 0.0134 (1 in 75); sd 0.76; at least one of 28 events 0.31
+  no glitch          33 of 2402: p = 0.0137 (1 in 73); sd 0.75; at least one of 28 events 0.32
+  ESS >= 30          14 of 1566: p = 0.0089 (1 in 112); sd 0.50; at least one of 28 events 0.22
+  both               13 of 1490: p = 0.0087 (1 in 115); sd 0.50; at least one of 28 events 0.22
+  both, within 1 h    2 of  334: p = 0.0060 (1 in 167); sd 0.48; at least one of 28 events 0.15
+  of the 34 slides reaching it, 20 have ESS < 30 and 1 a glitch
+superradiance, welch: zero lag +1.39 (ESS 40)
+  all                15 of 2537: p = 0.0059 (1 in 169); sd 0.74; at least one of 28 events 0.15
+  no glitch          15 of 2402: p = 0.0062 (1 in 160); sd 0.70; at least one of 28 events 0.16
+  ESS >= 30           6 of 2088: p = 0.0029 (1 in 348); sd 0.56; at least one of 28 events 0.08
+  both                6 of 1984: p = 0.0030 (1 in 331); sd 0.56; at least one of 28 events 0.08
+  both, within 1 h    0 of  446: p = 0.0000 (1 in inf); sd 0.58; at least one of 28 events 0.00
+  of the 15 slides reaching it, 9 have ESS < 30 and 0 a glitch
+superradiance, gwtc21: zero lag +2.61 (ESS 61)
+  all                57 of 2537: p = 0.0225 (1 in 45); sd 0.72; at least one of 28 events 0.47
+  no glitch          55 of 2402: p = 0.0229 (1 in 44); sd 0.71; at least one of 28 events 0.48
+  ESS >= 30          26 of 1775: p = 0.0146 (1 in 68); sd 0.55; at least one of 28 events 0.34
+  both               25 of 1692: p = 0.0148 (1 in 68); sd 0.55; at least one of 28 events 0.34
+  both, within 1 h    4 of  374: p = 0.0107 (1 in 94); sd 0.54; at least one of 28 events 0.26
+  of the 57 slides reaching it, 31 have ESS < 30 and 2 a glitch

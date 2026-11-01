@@ -3,6 +3,7 @@
 Two independent sources per missing cell, and one cell that was also
 sampled directly (H1+L1+V1, catalogue PSDs) as a check."""
 import multiprocessing as mp
+import os
 import sys
 import zlib
 import numpy as np
@@ -57,7 +58,7 @@ def reweight(label, target, pool):
 
 
 offset = mass_cut_offset()
-with mp.Pool(10) as pool:
+with mp.Pool(int(os.environ.get("NPOOL", 10))) as pool:
     for source, target in JOBS:
         vac, agn, sr = SOURCES[source]
         zv, sv, ev = reweight(vac, target, pool)

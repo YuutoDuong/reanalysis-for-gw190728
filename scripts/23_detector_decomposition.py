@@ -11,8 +11,9 @@ non-Gaussian noise, or a noise model that misdescribes its data.
 
 For the vacuum and environmental posteriors of each network, evaluate the
 exact, unmarginalised log-likelihood of each detector separately,
-ln L_d = <d|h>_d - <h|h>_d / 2, at posterior samples (distance and phase
-as reconstructed by bilby), and print per detector the change in its
+ln L_d = <d|h>_d - <h|h>_d / 2, at samples of the exact-likelihood
+posterior (script 17; distance and phase as bilby reconstructed them
+when sampling), and print per detector the change in its
 posterior mean between the two models next to w_d and the SNR^2 share.
 
 Also checks each PSD against the on-source data: the noise-weighted
@@ -33,7 +34,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parents[1]))
 import bilby
 from scalar_env import data
-from scalar_env.inference import OUTDIR
+from scalar_env.inference import exact_posterior
 from scalar_env.waveform import scalar_cloud_bbh
 
 bilby.core.utils.logger.setLevel("WARNING")
@@ -81,11 +82,10 @@ def per_detector(task):
     return out
 
 
-def evaluate(label, key, pool, rng):
-    """ln L_d, SNR_d^2 and <dh|dh>_d, each (samples, detectors), and the samples."""
-    post = bilby.result.read_in_result(str(OUTDIR / label / f"{label}_result.json")).posterior
-    rows = post.iloc[rng.choice(len(post), min(N_SAMPLES, len(post)), replace=False)]
-    samples = [r.to_dict() for _, r in rows.iterrows()]
+def evaluate(label, key, pool):
+    """ln L_d, SNR_d^2 and <dh|dh>_d, each (samples, detectors), and the
+    samples, drawn from the posterior of the exact likelihood (script 17)."""
+    samples = exact_posterior(label, size=N_SAMPLES).to_dict("records")
     values = np.array(pool.map(per_detector, [(key, s) for s in samples]))
     return values[..., 0], values[..., 1], values[..., 2], samples
 
@@ -108,11 +108,10 @@ def share(x):
 
 
 if __name__ == "__main__":
-    rng = np.random.default_rng(23)
     with mp.get_context("fork").Pool(NPOOL) as pool:
         for name, (dets, psd, vac, envs) in NETWORKS.items():
             key = (dets, psd)
-            lnl_vac, snr2, _, samples = evaluate(vac, key, pool, rng)
+            lnl_vac, snr2, _, samples = evaluate(vac, key, pool)
             print(f"\n{name}: optimal SNR "
                   + ", ".join(f"{d} {s ** 0.5:.1f}" for d, s in zip(dets, snr2.mean(0)))
                   + "; vacuum <ln L_d> "
@@ -123,7 +122,7 @@ if __name__ == "__main__":
             for d, row in residual_power(IFOS[key], best).items():
                 print(f"    {d}  " + "  ".join(f"{m:.2f}/{md:.2f}" for m, md in row))
             for env in envs:
-                lnl_env, _, dh2, _ = evaluate(env, key, pool, rng)
+                lnl_env, _, dh2, _ = evaluate(env, key, pool)
                 diff = lnl_env.mean(0) - lnl_vac.mean(0)
                 err = np.sqrt(lnl_env.var(0) / len(lnl_env) + lnl_vac.var(0) / len(lnl_vac))
                 print(f"  {env}: posterior-mean ln L_d, environment - vacuum"

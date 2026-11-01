@@ -32,7 +32,7 @@ import bilby
 from scalar_env import data
 from scalar_env.inference import (RunConfig, build_priors, build_likelihood,
                                   run_pe, ln_bayes_factor, OUTDIR)
-from scalar_env.waveform import scalar_cloud_bbh
+from scalar_env.waveform import scalar_cloud_bbh_dominant_mode
 
 bilby.core.utils.logger.setLevel("WARNING")
 NPOOL = max(1, (os.cpu_count() or 2) - 2)
@@ -63,7 +63,7 @@ exact = bilby.gw.likelihood.GravitationalWaveTransient(
     interferometers=ifos,
     waveform_generator=bilby.gw.WaveformGenerator(
         duration=ifos[0].duration, sampling_frequency=data.SAMPLE_RATE,
-        frequency_domain_source_model=scalar_cloud_bbh,
+        frequency_domain_source_model=scalar_cloud_bbh_dominant_mode,
         parameter_conversion=bilby.gw.conversion.convert_to_lal_binary_black_hole_parameters,
         waveform_arguments=dict(waveform_approximant="IMRPhenomXPHM",
                                 reference_frequency=data.F_LOW,

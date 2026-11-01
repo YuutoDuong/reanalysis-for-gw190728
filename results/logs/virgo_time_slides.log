@@ -1,0 +1,32 @@
+2537 slides in 8.0 h of Virgo data (76% of it flagged good)
+event's Virgo segment rebuilt from the bulk files: largest relative difference 3.7e-13; its whitened statistics 4.65, -0.15
+gw190728_vacuum: H1+L1 against script 17, largest difference 7.1e-14; zero lag against log_likelihood_ratio 1.4e-14
+gw190728_env: H1+L1 against script 17, largest difference 8.5e-14; zero lag against log_likelihood_ratio 2.8e-14
+gw190728_env_seed1: H1+L1 against script 17, largest difference 1.1e-13; zero lag against log_likelihood_ratio 5.7e-14
+gw190728_env_seed2: H1+L1 against script 17, largest difference 9.9e-14; zero lag against log_likelihood_ratio 7.1e-14
+gw190728_env_rho_max2e8: H1+L1 against script 17, largest difference 8.5e-14; zero lag against log_likelihood_ratio 5.7e-14
+gw190728_env_sr_eq9_taud1e6_rho2e8: H1+L1 against script 17, largest difference 8.5e-14; zero lag against log_likelihood_ratio 0.0e+00
+
+2537 slides, 135 set aside as glitches (whitened sample above 6.0 or |kurtosis| above 0.5)
+agnostic      Virgo             zero lag +1.18 (quoted +1.08, ESS 50) | 1762 slides: median -0.05, sd 0.50, 90% in [-0.96, +0.68], max +1.58
+    all slides            at or above zero lag (+1.18): 18 of 2537, p = 0.0071 [0.0042, 0.0112]
+    all slides            at or above quoted   (+1.08): 25 of 2537, p = 0.0099 [0.0064, 0.0145]
+    ESS >= 30, no glitch  at or above zero lag (+1.18): 8 of 1762, p = 0.0045 [0.0020, 0.0089]
+    ESS >= 30, no glitch  at or above quoted   (+1.08): 12 of 1762, p = 0.0068 [0.0035, 0.0119]
+agnostic      Virgo + BayesWave zero lag +2.61 (quoted +2.16, ESS 37) | 1490 slides: median +1.51, sd 0.50, 90% in [+0.58, +2.25], max +3.19
+    all slides            at or above zero lag (+2.61): 34 of 2537, p = 0.0134 [0.0093, 0.0187]
+    all slides            at or above quoted   (+2.16): 175 of 2537, p = 0.0690 [0.0594, 0.0795]
+    ESS >= 30, no glitch  at or above zero lag (+2.61): 13 of 1490, p = 0.0087 [0.0047, 0.0149]
+    ESS >= 30, no glitch  at or above quoted   (+2.16): 99 of 1490, p = 0.0664 [0.0543, 0.0803]
+superradiance Virgo             zero lag +1.39 (quoted +1.43, ESS 40) | 1984 slides: median -0.06, sd 0.56, 90% in [-1.12, +0.73], max +2.40
+    all slides            at or above zero lag (+1.39): 15 of 2537, p = 0.0059 [0.0033, 0.0097]
+    all slides            at or above quoted   (+1.43): 12 of 2537, p = 0.0047 [0.0024, 0.0082]
+    ESS >= 30, no glitch  at or above zero lag (+1.39): 6 of 1984, p = 0.0030 [0.0011, 0.0066]
+    ESS >= 30, no glitch  at or above quoted   (+1.43): 4 of 1984, p = 0.0020 [0.0005, 0.0052]
+superradiance Virgo + BayesWave zero lag +2.61 (quoted +2.73, ESS 61) | 1691 slides: median +1.54, sd 0.55, 90% in [+0.50, +2.22], max +4.32
+    all slides            at or above zero lag (+2.61): 57 of 2537, p = 0.0225 [0.0171, 0.0290]
+    all slides            at or above quoted   (+2.73): 35 of 2537, p = 0.0138 [0.0096, 0.0191]
+    ESS >= 30, no glitch  at or above zero lag (+2.61): 25 of 1691, p = 0.0148 [0.0096, 0.0217]
+    ESS >= 30, no glitch  at or above quoted   (+2.73): 13 of 1691, p = 0.0077 [0.0041, 0.0131]
+
+wrote virgo_time_slides.json

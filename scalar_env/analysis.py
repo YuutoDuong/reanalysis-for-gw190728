@@ -21,6 +21,13 @@ CORNER_KWARGS = dict(bins=40, smooth=1.0, show_titles=True,
                      quantiles=[0.05, 0.5, 0.95],
                      levels=(0.39, 0.86),          # 1 & 2 sigma in 2D
                      plot_datapoints=False, fill_contours=True)
+# Overlaid posteriors have their own bin ranges (a shared one would
+# over-smooth the narrower), so each 1-D histogram is drawn as a density.
+# A new dict per call: corner writes its colour into the one it is given.
+DENSITY = lambda: dict(density=True)
+LABELS = {"chirp_mass": r"$\mathcal{M}\,[M_\odot]$", "mass_ratio": r"$q$",
+          "chi_eff": r"$\chi_{\rm eff}$", "luminosity_distance": r"$d_L$ [Gpc]"}
+SCALE = {"luminosity_distance": 1e-3}   # Mpc -> Gpc
 
 
 def _save(fig, name):
@@ -42,13 +49,14 @@ def compare_with_catalog(result, catalog_samples, name="vacuum_vs_gwtc",
     import corner
     import matplotlib.pyplot as plt
 
-    ours = np.column_stack([result.posterior[p] for p in params])
-    theirs = np.column_stack([np.asarray(catalog_samples[p]) for p in params])
+    column = lambda samples, p: np.asarray(samples[p]) * SCALE.get(p, 1.0)
+    ours = np.column_stack([column(result.posterior, p) for p in params])
+    theirs = np.column_stack([column(catalog_samples, p) for p in params])
 
-    labels = [result.priors[p].latex_label if p in result.priors else p
-              for p in params]
-    fig = corner.corner(theirs, labels=labels, color="C1", **CORNER_KWARGS)
-    corner.corner(ours, fig=fig, color="C0", **CORNER_KWARGS)
+    labels = [LABELS.get(p, p) for p in params]
+    fig = corner.corner(theirs, labels=labels, color="C1", hist_kwargs=DENSITY(),
+                        **CORNER_KWARGS)
+    corner.corner(ours, fig=fig, color="C0", hist_kwargs=DENSITY(), **CORNER_KWARGS)
     fig.legend(handles=[plt.Line2D([], [], color="C1", label=catalog_label),
                         plt.Line2D([], [], color="C0", label="this work")],
                loc="upper right")
@@ -84,14 +92,10 @@ def vacuum_vs_env_overlay(result_vac, result_env, name="mc_chieff_shift",
     vac = np.column_stack([result_vac.posterior[p] for p in params])
     env = np.column_stack([result_env.posterior[p] for p in params])
     labels = [r"$\mathcal{M}_c\,[M_\odot]$", r"$\chi_{\rm eff}$"]
-    # Equal total weight, so neither histogram is dwarfed when one
-    # posterior pools several runs; quantiles and contours are unchanged.
-    # (A shared bin range would over-smooth the narrow vacuum contours.)
-    unit = lambda s: np.full(len(s), 1.0 / len(s))
 
-    fig = corner.corner(vac, labels=labels, color="C0", weights=unit(vac),
+    fig = corner.corner(vac, labels=labels, color="C0", hist_kwargs=DENSITY(),
                         **CORNER_KWARGS)
-    corner.corner(env, fig=fig, color="C3", weights=unit(env), **CORNER_KWARGS)
+    corner.corner(env, fig=fig, color="C3", hist_kwargs=DENSITY(), **CORNER_KWARGS)
     fig.legend(handles=[plt.Line2D([], [], color="C0", label="vacuum"),
                         plt.Line2D([], [], color="C3", label="environmental")],
                loc="upper right")

@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).parents[1]))
 import bilby
 from scalar_env import data
 from scalar_env.inference import RunConfig, build_priors
-from scalar_env.waveform import scalar_cloud_bbh
+from scalar_env.waveform import scalar_cloud_bbh_dominant_mode
 
 bilby.core.utils.logger.setLevel("WARNING")
 N = 150
@@ -39,7 +39,7 @@ def full_likelihood(marginalise):
         interferometers=ifos,
         waveform_generator=bilby.gw.WaveformGenerator(
             duration=ifos[0].duration, sampling_frequency=data.SAMPLE_RATE,
-            frequency_domain_source_model=scalar_cloud_bbh,
+            frequency_domain_source_model=scalar_cloud_bbh_dominant_mode,
             parameter_conversion=bilby.gw.conversion.convert_to_lal_binary_black_hole_parameters,
             waveform_arguments=dict(waveform_approximant="IMRPhenomXPHM",
                                     reference_frequency=data.F_LOW,

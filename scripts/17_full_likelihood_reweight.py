@@ -1,25 +1,31 @@
-"""Exact-likelihood evidences, by reweighting the relative-binning runs.
+"""Exact-likelihood evidences, by reweighting the sampled runs.
 
-Every run sampled the relative-binning likelihood L_RB.  Its evidence for
-the exact, full-grid likelihood follows from its posterior samples alone,
+Every run sampled a fast likelihood L_fast: relative binning and, for the
+environmental model, the dominant harmonic's correction on all harmonics.
+Its evidence for the exact likelihood (full frequency grid, correction
+harmonic by harmonic; inference.exact_likelihood) follows from its
+posterior samples alone,
 
-    Z_exact / Z_RB = E_post[ L_exact / L_RB ],
+    Z_exact / Z_fast = E_post[ L_exact / L_fast ],
 
-an importance-sampling identity that needs no new sampling.  bilby fixes
-the coalescence phase at 0 under phase marginalisation, so the stored
-log-likelihoods refer to phase 0 and the exact one is evaluated there too
-(runs that sample the phase are evaluated at their own); the printed
-scatter of ln(L_exact / L_RB) checks that both refer to the same points
-(a few tenths at most, if so).
+an importance-sampling identity that needs no new sampling.  The same
+weights, L_exact / L_fast, turn the samples into the posterior of the
+exact likelihood.  bilby fixes the coalescence phase at 0 under phase
+marginalisation, so the stored log-likelihoods refer to phase 0 and the
+exact one is evaluated there too (runs that sample the phase are
+evaluated at their own).  The printed scatter of ln(L_exact / L_fast) and
+the effective sample size say how far to trust each estimate.
 
 Each run's exact likelihood uses that run's own data, PSD, approximant
 and marginalisations, read off its label (VARIANTS).  Writes
 reweighted_lnb.json: per run the reported ln Z, the correction and its
 bootstrap error; per environmental run ln B for the exact likelihood
-(mass-cut offset included).  A run whose result is unchanged since the
-last call (same ln Z) keeps its stored correction, so only new or redone
-runs cost time; move reweighted_lnb.json aside to redo them all.  ~30 min
-for every run with 10 processes; set NPOOL to use fewer.
+(mass-cut offset included).  Writes reweighted_samples.npz: per run the
+(posterior row, ln weight) of every sample used (inference.exact_posterior
+reads it).  A run whose result is unchanged since the last call (same
+ln Z) keeps its stored values, so only new or redone runs cost time; move
+both files aside to redo them all, as after any change of the waveform
+model.  Set NPOOL to use fewer processes.
 """
 
 import json
@@ -37,7 +43,7 @@ import bilby
 from scalar_env.inference import RunConfig, exact_likelihood, mass_cut_offset, OUTDIR
 
 bilby.core.utils.logger.setLevel("WARNING")
-N_SAMPLES = 250
+N_SAMPLES = 1000
 NPOOL = int(os.environ.get("NPOOL", max(1, (os.cpu_count() or 2) - 2)))
 HLV = ("H1", "L1", "V1")
 VACUUM = "gw190728_vacuum"
@@ -113,8 +119,9 @@ def done(label):
 PAIRS = {e: v for e, v in PAIRS.items() if done(e) and done(v)}   # usable mid-campaign
 LABELS = sorted(set(PAIRS) | set(PAIRS.values()))
 EXACT = {s: likelihood(*s) for s in sorted({spec(l) for l in LABELS})}
-OUTPUT = Path("reweighted_lnb.json")
+OUTPUT, SAMPLES = Path("reweighted_lnb.json"), Path("reweighted_samples.npz")
 STORED = json.loads(OUTPUT.read_text())["runs"] if OUTPUT.exists() else {}
+STORED_SAMPLES = dict(np.load(SAMPLES)) if SAMPLES.exists() else {}
 
 
 def exact_lnl(task):
@@ -123,34 +130,42 @@ def exact_lnl(task):
 
 
 def reweight(label, pool):
+    """(record, samples) of one run: its evidence correction, and the
+    (posterior row, ln weight) pairs behind it."""
     result = bilby.result.read_in_result(str(OUTDIR / label / f"{label}_result.json"))
-    if STORED.get(label, {}).get("ln_z") == result.log_evidence:   # unchanged run
-        return STORED[label]
+    if STORED.get(label, {}).get("ln_z") == result.log_evidence and label in STORED_SAMPLES:
+        return STORED[label], STORED_SAMPLES[label]              # unchanged run
     rng = np.random.default_rng(zlib.crc32(label.encode()))   # same draws in any run order
     post = result.posterior
-    rows = post.iloc[rng.choice(len(post), min(N_SAMPLES, len(post)), replace=False)]
+    index = rng.choice(len(post), min(N_SAMPLES, len(post)), replace=False)
+    rows = post.iloc[index]
     key = spec(label)
     fixed = dict(phase=0.0) if EXACT[key].phase_marginalization else {}
     tasks = [(key, {**r.to_dict(), **fixed}) for _, r in rows.iterrows()]
     delta = np.array(pool.map(exact_lnl, tasks)) - rows["log_likelihood"].to_numpy()
     correction = logsumexp(delta) - np.log(delta.size)
     boot = [logsumexp(rng.choice(delta, delta.size)) - np.log(delta.size) for _ in range(500)]
-    return dict(ln_z=result.log_evidence, ln_z_err=result.log_evidence_err,
-                correction=float(correction), correction_err=float(np.std(boot)),
-                delta_mean=float(delta.mean()), delta_sd=float(delta.std()))
+    weight = np.exp(delta - delta.max())
+    record = dict(ln_z=result.log_evidence, ln_z_err=result.log_evidence_err,
+                  correction=float(correction), correction_err=float(np.std(boot)),
+                  delta_mean=float(delta.mean()), delta_sd=float(delta.std()),
+                  ess=float(weight.sum() ** 2 / (weight ** 2).sum()))
+    return record, np.column_stack([index, delta])
 
 
 if __name__ == "__main__":
     offset = mass_cut_offset()
-    runs = {}
+    runs, samples = {}, {}
     with mp.get_context("fork").Pool(NPOOL) as pool:
         for label in LABELS:
-            runs[label] = r = reweight(label, pool)
-            print(f"{label:50s} ln(L_exact/L_RB): mean {r['delta_mean']:+.3f} "
-                  f"sd {r['delta_sd']:.3f}  ->  ln Z correction "
+            runs[label], samples[label] = reweight(label, pool)
+            r = runs[label]
+            print(f"{label:50s} ln(L_exact/L_fast): mean {r['delta_mean']:+.3f} "
+                  f"sd {r['delta_sd']:.3f}, ESS {r['ess']:4.0f}  ->  ln Z correction "
                   f"{r['correction']:+.3f} +- {r['correction_err']:.3f}", flush=True)
+    np.savez_compressed(SAMPLES, **samples)
 
-    print("\nln B, relative binning vs exact likelihood (mass-cut offset included)")
+    print("\nln B, as sampled vs exact likelihood (mass-cut offset included)")
     lnb = {}
     for env, vac in PAIRS.items():
         e, v = runs[env], runs[vac]
@@ -161,4 +176,4 @@ if __name__ == "__main__":
         lnb[env] = dict(vacuum=vac, relative_binning=raw, exact=exact, err=float(err))
         print(f"  {env:50s} {raw:+6.2f}  ->  {exact:+6.2f} +- {err:.2f}")
     OUTPUT.write_text(json.dumps(dict(runs=runs, lnb=lnb), indent=2))
-    print(f"{OUTPUT} written")
+    print(f"{OUTPUT} and {SAMPLES} written")

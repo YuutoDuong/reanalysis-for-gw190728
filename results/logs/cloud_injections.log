@@ -1,0 +1,64 @@
+per injection (exact, offset included): SNR | twin agn, SR | cloud agn, SR | shift V, V+BW (agn) [ESS] | shift V, V+BW (SR)
+inj001 12.26 | -2.99 -1.69 | -0.71 +1.32 | +0.40 [200] -0.42 [199] | +0.42 [200] -0.42 [200]
+inj002 13.27 | -4.87 -3.19 | +0.00 +2.20 | +0.43 [123] +0.40 [27] | +0.63 [123] +0.74 [27]
+inj003 12.00 | -2.05 -0.36 | +3.75 +5.70 | -0.02 [193] -0.72 [150] | +0.30 [191] -0.50 [150]
+inj005 13.83 | -5.87 -4.08 | +2.94 +4.59 | +0.03 [209] -0.64 [126] | +0.33 [213] -0.29 [158]
+inj008 11.38 | -4.02 -2.41 | +6.14 +7.90 | -0.23 [112] -0.48 [114] | -0.17 [161] -0.37 [147]
+inj016 12.78 | -1.27 +0.77 | +6.87 +8.80 | -0.24 [204] -0.86 [74] | -0.29 [162] -1.08 [95]
+inj022 13.66 | -5.78 -3.71 | +0.56 +2.56 | -0.42 [111] +0.05 [52] | -0.60 [105] +0.08 [66]
+inj024 12.94 | -3.53 -1.51 | -1.49 +0.30 | +0.81 [93] +1.30 [83] | +0.50 [71] +1.08 [55]
+inj042 13.60 | -0.85 +1.22 | +4.66 +6.56 | +0.30 [96] +0.02 [20] | +0.46 [140] +0.12 [20]
+inj043 11.66 | -2.26 -0.69 | +3.43 +5.30 | -0.48 [15] -1.43 [23] | -0.11 [52] -0.54 [34]
+
+--- two detectors
+agnostic      clouds: median +3.19, range [-1.49, +6.87]; GW190728 -0.60, reached by 8 of 10
+agnostic      twins : median -3.26, range [-5.87, -0.85]; GW190728 -0.60, reached by 0 of 10
+agnostic      cloud - twin: median +5.74, range [+2.03, +10.16]
+superradiance clouds: median +4.95, range [+0.30, +8.80]; GW190728 +0.64, reached by 9 of 10
+superradiance twins : median -1.60, range [-4.08, +1.22]; GW190728 +0.64, reached by 2 of 10
+superradiance cloud - twin: median +6.03, range [+1.81, +10.31]
+gain in median log-likelihood, agnostic: median +6.28, range [+2.34, +9.53]; GW190728 +2.49, reached by 9 of 10
+superradiance minus agnostic, clouds: median +1.91, range [+1.65, +2.20]; GW190728 +1.24, reached by 10 of 10
+
+--- the rise with the network and the spectra (shift from H1+L1)
+H1+L1+V1             agnostic     : median +0.01, range [-0.48, +0.81]; GW190728 +1.08, reached by 0 of 10
+                                   ESS >= 30: 9 of 10, median +0.03, max +0.81
+H1+L1+V1             superradiance: median +0.31, range [-0.60, +0.63]; GW190728 +1.43, reached by 0 of 10
+                                   ESS >= 30: 10 of 10, median +0.31, max +0.63
+H1+L1+V1, BayesWave  agnostic     : median -0.45, range [-1.43, +1.30]; GW190728 +2.16, reached by 0 of 10
+                                   ESS >= 30: 7 of 10, median -0.48, max +1.30
+H1+L1+V1, BayesWave  superradiance: median -0.33, range [-1.08, +1.08]; GW190728 +2.73, reached by 0 of 10
+                                   ESS >= 30: 8 of 10, median -0.39, max +1.08
+
+--- recovery of the injected cloud (as sampled; truth inside the 90% interval?)
+injected: {'alpha_cloud': 0.12, 'rho_phi': 19000000.0}
+env    alpha_cloud: medians 0.109-0.125 (mean 0.118), truth at the 45%-64% percentiles, inside the 90% interval in 10 of 10
+env    rho_phi    : medians 1.41e+07-3.14e+07 (mean 2.12e+07), truth at the 22%-68% percentiles, inside the 90% interval in 10 of 10
+env_sr alpha_cloud: medians 0.13-0.14 (mean 0.135), truth at the 10%-33% percentiles, inside the 90% interval in 10 of 10
+env_sr rho_phi    : medians 8.91e+06-2.28e+07 (mean 1.51e+07), truth at the 33%-99% percentiles, inside the 90% interval in 8 of 10
+
+--- superradiance posterior = agnostic posterior cut to its region?
+inj001: kept 50%; alpha 0.116 -> cut 0.131, run 0.132; rho 1.76e+07 -> cut 1.26e+07, run 1.34e+07
+inj002: kept 51%; alpha 0.117 -> cut 0.138, run 0.137; rho 2.21e+07 -> cut 1.44e+07, run 1.38e+07
+inj003: kept 46%; alpha 0.115 -> cut 0.131, run 0.137; rho 2.52e+07 -> cut 1.77e+07, run 1.62e+07
+inj005: kept 50%; alpha 0.118 -> cut 0.132, run 0.134; rho 1.43e+07 -> cut 1.09e+07, run 1.05e+07
+inj008: kept 51%; alpha 0.121 -> cut 0.133, run 0.135; rho 3.14e+07 -> cut 2.48e+07, run 2.28e+07
+inj016: kept 47%; alpha 0.124 -> cut 0.139, run 0.140; rho 2.75e+07 -> cut 2.06e+07, run 2.11e+07
+inj022: kept 53%; alpha 0.109 -> cut 0.126, run 0.131; rho 1.41e+07 -> cut 9.77e+06, run 8.91e+06
+inj024: kept 51%; alpha 0.117 -> cut 0.134, run 0.137; rho 2.29e+07 -> cut 1.61e+07, run 1.55e+07
+inj042: kept 57%; alpha 0.120 -> cut 0.129, run 0.130; rho 1.67e+07 -> cut 1.40e+07, run 1.33e+07
+inj043: kept 51%; alpha 0.125 -> cut 0.137, run 0.138; rho 1.98e+07 -> cut 1.56e+07, run 1.56e+07
+
+--- gain in fit by detector (posterior-mean ln L_d, env - vac, as sampled) [w_d]
+inj001: cloud H1 +1.16, L1 +1.16  [w H1 29%, L1 69%, V1 1.8%];  twin H1 +0.48, L1 -1.10
+inj002: cloud H1 +4.77, L1 -1.09  [w H1 30%, L1 68%, V1 1.9%];  twin H1 -1.49, L1 -0.53
+inj003: cloud H1 +2.23, L1 +3.92  [w H1 30%, L1 68%, V1 1.9%];  twin H1 -0.12, L1 +0.73
+inj005: cloud H1 +0.49, L1 +5.04  [w H1 31%, L1 67%, V1 1.9%];  twin H1 -0.75, L1 -0.84
+inj008: cloud H1 +4.02, L1 +4.76  [w H1 30%, L1 68%, V1 1.9%];  twin H1 -0.62, L1 +0.25
+inj016: cloud H1 +2.78, L1 +5.96  [w H1 31%, L1 67%, V1 1.8%];  twin H1 +0.18, L1 +2.17
+inj022: cloud H1 +2.83, L1 +1.76  [w H1 30%, L1 68%, V1 1.8%];  twin H1 -0.31, L1 +0.10
+inj024: cloud H1 +5.54, L1 -3.23  [w H1 31%, L1 67%, V1 1.8%];  twin H1 -0.32, L1 -0.34
+inj042: cloud H1 +3.87, L1 +4.69  [w H1 32%, L1 66%, V1 2.0%];  twin H1 +0.91, L1 +1.74
+inj043: cloud H1 +1.68, L1 +4.18  [w H1 31%, L1 67%, V1 1.9%];  twin H1 +1.30, L1 -1.40
+clouds: H1 median +2.80, L1 median +4.05; L1's part of the H1+L1 gain 54% (range -140%-91%) against w_L1/(w_H1+w_L1) 69%; L1 gains more than H1 in 7 of 10; w_V1 1.8%-2.0%
+GW190728 (same estimator, four baseline runs): H1 +1.22, L1 +0.17 (the paper's per-detector table, exact likelihood: +1.32, -0.69)

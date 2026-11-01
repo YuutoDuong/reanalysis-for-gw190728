@@ -1,9 +1,6 @@
 # Results
 
-The paper's data products. ln B is ln Z_env − ln Z_vac. "Exact" means the full likelihood,
-obtained by importance reweighting of the relative-binning runs (script 17). Where a file says
-an ln B includes the mass-prior correction of Sec. IV.E, that is +0.180; raw values need it
-added.
+The paper's data products. ln B is ln Z_env − ln Z_vac. "Exact" means the full likelihood, obtained by importance reweighting of the relative-binning runs (script 17). Where a file says an ln B includes the mass-prior correction of Sec. IV.E, that is +0.180; raw values need it added.
 
 ## GW190728
 
@@ -18,13 +15,10 @@ added.
 | `logs/detector_decomposition.log` | Table VI (script 23) |
 | `logs/synthetic_test.log`, `logs/synthetic_test_samplers.log` | the synthetic test of Sec. V.C (script 18 and `scripts/checks/synth_samplers.py`) |
 
-Run labels read `gw190728_<model>_<variants>`, where the model is `vacuum` or `env`. Each
-environmental run is compared with a vacuum run with the same network, noise model, waveform and
-phase treatment. `runs.csv` names that run in its `vacuum_run` column. The variants:
+Run labels read `gw190728_<model>_<variants>`, where the model is `vacuum` or `env`. Each environmental run is compared with a vacuum run with the same network, noise model, waveform and phase treatment. `runs.csv` names that run in its `vacuum_run` column. The variants:
 
 - `seed1`, `seed2`: repeats with other seeds.
-- `rho_max<X>`, `rho<X>`: density bound X g cm⁻³ (`2p2e7` means 2.2×10⁷). `runs.csv` gives
-  every run's bound.
+- `rho_max<X>`, `rho<X>`: density bound X g cm⁻³ (`2p2e7` means 2.2×10⁷). `runs.csv` gives every run's bound.
 - `sr_eq9_taud1e<N>`: the superradiance prior with delay time 10^N yr.
 - `hlv`: H1+L1+V1. `only_H1`, `only_L1`: one detector.
 - `gwtc21psd`: the GWTC-2.1 BayesWave noise spectra (`h1l1_gwtc21psd`: with H1+L1 only).
@@ -44,6 +38,12 @@ phase treatment. `runs.csv` names that run in its `vacuum_run` column. The varia
 | `injection_sr_lnb.json` | the superradiance subset, 13 injections, raw |
 | `injection_virgo.json` | each injection's exact ln B for three networks: H1+L1; H1+L1+V1; and H1+L1+V1 with the event's BayesWave spectra. Includes the correction, the log-weight scatter and the effective sample size (script 30). |
 | `*_det.json` | the same for the second campaign, whose masses are redshifted (added once that campaign is complete) |
+| `*_det_cloud.json` | the same for the ten environmental signals of Sec. V.G (script 31): the second campaign's binaries in the same noise segments, with a cloud at α = 0.12, ρ = 1.9×10⁷ g cm⁻³ |
+| `*_det_seobnrv4phm.json` | the same for the ten vacuum signals of Sec. V.H (script 32), generated with SEOBNRv4PHM in the same segments and recovered with IMRPhenomXPHM |
+| `injection_alignment_det_seobnrv4phm.json` | the coalescence phase, polarisation angle and arrival time that align each SEOBNRv4PHM signal with its IMRPhenomXPHM twin, and the overlap reached |
+| `logs/cloud_injections.log`, `logs/eob_injections.log` | every number Secs. V.G and V.H quote about these signals (`scripts/checks/cloud_injections.py`, `eob_injections.py`) |
+| `virgo_time_slides.json` | the Virgo time slides (script 33): per slide, its start, its whitened-strain statistics and the shift of the event's ln B on adding Virgo, under both priors and both spectra, with the effective sample size; and the zero-lag shifts |
+| `logs/virgo_time_slides.log`, `logs/virgo_slides_summary.log` | the slides' checks and tail (script 33, `scripts/checks/virgo_slides_summary.py`) |
 
 ## Figures
 

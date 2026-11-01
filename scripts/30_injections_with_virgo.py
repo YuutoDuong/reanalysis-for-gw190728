@@ -17,10 +17,18 @@ on the same samples for every network:
                         for on-source estimates (the segments lie within
                         ~20 min of the event).
 The first also puts the background on the exact likelihood quoted for
-GW190728.  Writes injection_virgo{tag}.json (per injection, network and
-prior: exact ln B, log-weight scatter, effective sample size) and prints
-the shift distributions next to GW190728's own.  Resumable per network.
---det: the redshifted campaign.  ~1 h per network on 4 cores.
+GW190728 (inference.exact_likelihood: full grid, environmental correction
+harmonic by harmonic).  Writes injection_virgo{tag}.json (per injection,
+network and prior: exact ln B, log-weight scatter, effective sample size,
+and the gain in median log-likelihood over vacuum, the measure of fit
+Roy et al. quote) and prints the shift distributions next to GW190728's
+own.  Resumable per network and prior, so it may run while superradiance
+runs are still being added; move the file aside after any change of the
+waveform model.  --det: the redshifted campaign.  --cloud: the campaign
+whose injected signals carry an environment (script 31), which shows
+what the same changes do when the environment is real.  --approximant:
+the campaign whose signals were made with that waveform model (script
+32: SEOBNRv4PHM).  ~1 h per network on 4 cores.
 """
 
 import argparse
@@ -37,12 +45,13 @@ from scipy.special import logsumexp
 sys.path.insert(0, str(Path(__file__).parents[1]))
 import bilby
 from scalar_env import data
-from scalar_env.inference import RunConfig, exact_likelihood, mass_cut_offset, OUTDIR
-from scalar_env.injections import inject_into_noise, RHO_MAX, _tag
+from scalar_env.inference import (RunConfig, exact_likelihood, exact_posterior,
+                                  mass_cut_offset, OUTDIR)
+from scalar_env.injections import inject_into_noise, APPROXIMANT, RHO_MAX, _tag
 
 bilby.core.utils.logger.setLevel("WARNING")
 EVENT = "GW190728_064510"
-N_SAMPLES = 300
+N_SAMPLES = 1000
 NPOOL = int(os.environ.get("NPOOL", 4))
 HLV = ("H1", "L1", "V1")
 NETWORKS = {  # name: (detectors, PSD source)
@@ -54,14 +63,16 @@ GW190728 = {  # network: GW190728's agnostic run at 2e8 (script 17 labels)
     "H1+L1+V1": "gw190728_env_hlv",
     "H1+L1+V1, BayesWave": "gw190728_env_hlv_gwtc21psd",
 }
+BASE = ["gw190728_env", "gw190728_env_seed1", "gw190728_env_seed2", "gw190728_env_rho_max2e8"]
 GLITCH = "inj028"
 LIKELIHOODS = {}   # of the injection being processed, inherited by the forked pool
 
 
-def injected(index, parameters, network):
+def injected(index, parameters, network, approximant):
     """The injection's data for one network."""
     detectors, psd_source = NETWORKS[network]
-    ifos, trigger, _ = inject_into_noise(parameters, index, detectors=detectors)
+    ifos, trigger, _ = inject_into_noise(parameters, index, approximant=approximant,
+                                         detectors=detectors)
     if psd_source == "gwtc21":
         for ifo in ifos:
             f, psd = data.catalogue_psd(EVENT, ifo.name)
@@ -70,11 +81,11 @@ def injected(index, parameters, network):
     return ifos, trigger
 
 
-def likelihoods(index, parameters, networks):
+def likelihoods(index, parameters, networks, approximant):
     """Exact likelihoods of one injection, per network and model."""
     out = {}
     for network in networks:
-        ifos, trigger = injected(index, parameters, network)
+        ifos, trigger = injected(index, parameters, network, approximant)
         for model in ("vacuum", "environment"):
             config = RunConfig(label="_", model=model, detectors=NETWORKS[network][0],
                                prior_kwargs=dict(rho_max_gcm3=RHO_MAX) if model == "environment" else {})
@@ -89,27 +100,34 @@ def exact_lnl(task):
 
 
 def ln_z(label, network, pool):
-    """(exact ln Z, log-weight scatter, effective sample size) of one run."""
+    """(exact ln Z, log-weight scatter, effective sample size, posterior
+    median of the exact log-likelihood) of one run."""
     rng = np.random.default_rng(zlib.crc32(label.encode()))   # same samples for every network
     result = bilby.result.read_in_result(str(OUTDIR / label / f"{label}_result.json"))
     post = result.posterior
     rows = post.iloc[rng.choice(len(post), min(N_SAMPLES, len(post)), replace=False)]
     model = "environment" if "alpha_cloud" in post else "vacuum"
     tasks = [((network, model), {**r.to_dict(), "phase": 0.0}) for _, r in rows.iterrows()]
-    delta = np.array(pool.map(exact_lnl, tasks)) - rows["log_likelihood"].to_numpy()
+    lnl = np.array(pool.map(exact_lnl, tasks))
+    delta = lnl - rows["log_likelihood"].to_numpy()
     w = np.exp(delta - delta.max())
     return (float(result.log_evidence + logsumexp(delta) - np.log(delta.size)),
-            float(delta.std()), float(w.sum() ** 2 / (w ** 2).sum()))
+            float(delta.std()), float(w.sum() ** 2 / (w ** 2).sum()),
+            float(np.quantile(lnl, 0.5, weights=w, method="inverted_cdf")))
 
 
 def summary(results):
     lnb = json.loads(Path("reweighted_lnb.json").read_text())["lnb"]
-    base = np.mean([lnb[l]["exact"] for l in ("gw190728_env", "gw190728_env_seed1",
-                                              "gw190728_env_seed2", "gw190728_env_rho_max2e8")])
+    base = np.mean([lnb[l]["exact"] for l in BASE])
     clean = {k: v for k, v in results.items() if k != GLITCH}
     background = np.array([v["H1+L1"]["agnostic"]["lnb"] for v in clean.values()])
-    print(f"\nH1+L1 background, full grid ({background.size} clean): median "
+    print(f"\nH1+L1 background, exact likelihood ({background.size} clean): median "
           f"{np.median(background):+.2f}, P(>= {base:+.2f}) = {np.mean(background >= base):.2f}")
+    median = lambda label: exact_posterior(label)["log_likelihood"].median()
+    gain = np.mean([median(l) for l in BASE]) - median("gw190728_vacuum")
+    gains = np.array([v["H1+L1"]["agnostic"]["gain"] for v in clean.values()])
+    print(f"gain in median log-likelihood: clean injections median {np.median(gains):+.2f}; "
+          f"GW190728 {gain:+.2f}, exceeded by {np.mean(gains >= gain):.0%}")
     for network, label in GW190728.items():
         for prior in ("agnostic", "superradiance"):
             pairs = [(v[network][prior], v["H1+L1"][prior]) for v in clean.values()
@@ -131,21 +149,29 @@ def summary(results):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Virgo and PSD null test on an injection campaign")
     parser.add_argument("--det", action="store_true", help="the redshifted campaign")
-    tag = _tag(parser.parse_args().det)
+    parser.add_argument("--cloud", action="store_true",
+                        help="the campaign of environmental signals (script 31)")
+    parser.add_argument("--approximant", default=APPROXIMANT,
+                        help="the waveform model the signals were made with (script 32: SEOBNRv4PHM)")
+    args = parser.parse_args()
+    tag = _tag(args.det, args.cloud, args.approximant)
     out_path = Path(f"injection_virgo{tag}.json")
     results = json.loads(out_path.read_text()) if out_path.exists() else {}
     offset = mass_cut_offset()
     campaign = json.loads(Path(f"injection_lnb{tag}.json").read_text())
     for key, record in sorted(campaign.items()):
-        missing = [n for n in NETWORKS if n not in results.get(key, {})]
-        if not missing:
-            continue
         runs = {prior: f"{key}{tag}_{suffix}" for prior, suffix in
                 (("vacuum", "vac"), ("agnostic", "env"), ("superradiance", "env_sr"))
                 if (OUTDIR / f"{key}{tag}_{suffix}" / f"{key}{tag}_{suffix}_result.json").exists()}
+        # a network is done once it holds every finished run, so a
+        # superradiance run that finishes later is added on the next pass
+        missing = [n for n in NETWORKS if set(runs) - {"vacuum"} - set(results.get(key, {}).get(n, {}))]
+        if not missing:
+            continue
         try:
             LIKELIHOODS.clear()
-            LIKELIHOODS.update(likelihoods(int(key[3:]), record["parameters"], missing))
+            LIKELIHOODS.update(likelihoods(int(key[3:]), record["parameters"], missing,
+                                           args.approximant))
         except Exception as exc:
             print(f"{key}: SKIPPED ({type(exc).__name__}: {exc})", flush=True)
             continue
@@ -155,7 +181,8 @@ if __name__ == "__main__":
                 z = {prior: ln_z(label, network, pool) for prior, label in runs.items()}
                 entry[network] = {prior: dict(lnb=z[prior][0] - z["vacuum"][0] + offset,
                                               scatter=max(z[prior][1], z["vacuum"][1]),
-                                              ess=min(z[prior][2], z["vacuum"][2]))
+                                              ess=min(z[prior][2], z["vacuum"][2]),
+                                              gain=z[prior][3] - z["vacuum"][3])
                                   for prior in z if prior != "vacuum"}
         out_path.write_text(json.dumps(results, indent=2))
         print(f"{key}: " + "; ".join(

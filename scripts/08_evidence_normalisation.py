@@ -16,7 +16,8 @@ evidence integrates over the unconstrained prior.)
 
 P and f are measured from samples, independently of the evidence
 integrals they must reproduce, so this is a genuine consistency test of
-both the sampler and the constraint machinery.  It is what exposed the
+both the sampler and the constraint machinery.  Evidences and posteriors
+are those of the exact likelihood (script 17).  It is what exposed the
 tau_d bug: before the fix the measured differences tracked neither
 ln P nor ln(P/f), because the constraints were enforced only when the
 live points were drawn.
@@ -32,7 +33,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parents[1]))
 import bilby
-from scalar_env.inference import RunConfig, build_priors, mass_cut_offset, OUTDIR
+from scalar_env.inference import RunConfig, build_priors, exact_posterior, mass_cut_offset
 
 TRIGGER = 1248331528.5            # only sets the geocent_time prior
 N_PRIOR = 2_000_000
@@ -63,10 +64,9 @@ def posterior_mass(posterior, prior_kwargs):
 
 
 def posterior_of(*labels):
+    """Posterior of the exact likelihood (script 17), runs pooled."""
     import pandas as pd
-    return pd.concat([bilby.result.read_in_result(
-        str(OUTDIR / l / f"{l}_result.json")).posterior for l in labels],
-        ignore_index=True)
+    return pd.concat([exact_posterior(l) for l in labels], ignore_index=True)
 
 
 # Exact-likelihood ln B, mass-cut offset included (script 17).

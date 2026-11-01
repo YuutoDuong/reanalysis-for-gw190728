@@ -18,6 +18,7 @@ import numpy as np
 
 from . import data
 from .inference import RunConfig, run_pe, ln_bayes_factor, mass_cut_offset
+from .waveform import scalar_cloud_bbh
 
 # Must match RHO_MAX in scripts 02 and 04: a false-alarm probability is
 # only meaningful if the background is computed with the same statistic
@@ -25,6 +26,22 @@ from .inference import RunConfig, run_pe, ln_bayes_factor, mass_cut_offset
 RHO_MAX = 2e8
 
 NPOOL = max(1, (os.cpu_count() or 2) - 2)
+
+# The waveform model of the injected signals unless a campaign names
+# another; every campaign is recovered with this one.  SEOBNRv4PHM is
+# generated in the time domain at a step of 1/(2 f_max): at bilby's default
+# f_max, the data's Nyquist frequency, the (5,5) ringdown of the lighter
+# binaries lies above it, which LAL refuses, so it is sampled twice as
+# finely (bilby keeps the data's band).
+APPROXIMANT = "IMRPhenomXPHM"
+WAVEFORM_ARGUMENTS = {"SEOBNRv4PHM": dict(maximum_frequency=data.SAMPLE_RATE)}
+
+# GW190728's background is the injections as loud as it: H1+L1 optimal SNR
+# within MATCH of the event's (script 23).  Noise segment 28 holds an
+# unvetoed glitch (ln B = +295 for a vacuum signal) and is left out of
+# every comparison.
+EVENT_SNR, MATCH = 12.7, 2.5
+GLITCH = "inj028"
 
 # GW190728-like fiducial source; components jittered per injection so the
 # study samples a neighbourhood, not one point.  The masses are GWTC-2.1's
@@ -38,12 +55,15 @@ JITTER = dict(mass_1=0.8, mass_2=0.6, a_1=0.1, luminosity_distance=150.0,
               theta_jn=0.3)
 
 
-def _tag(detector_frame):
+def _tag(detector_frame, environment=None, approximant=APPROXIMANT):
     """Suffix of the files and run labels of a campaign.  The first
     campaign (2026-08) injected the source-frame masses unredshifted, so
     its binaries were 1+z lighter than GW190728 in the detector frame; it
-    carries no tag.  The second (2026-10) redshifts them."""
-    return "_det" if detector_frame else ""
+    carries no tag.  The second (2026-10) redshifts them.  A campaign
+    whose injected signals carry a scalar environment adds "_cloud", one
+    whose signals are made with another waveform model adds its name."""
+    return (("_det" if detector_frame else "") + ("_cloud" if environment else "")
+            + ("" if approximant == APPROXIMANT else f"_{approximant.lower()}"))
 
 
 def draw_injection_parameters(n, seed=1234, detector_frame=True):
@@ -71,43 +91,58 @@ def draw_injection_parameters(n, seed=1234, detector_frame=True):
     return draws
 
 
+def waveform_generator(approximant=APPROXIMANT, environment=False, duration=8):
+    """The generator injections are made with: the vacuum model, or with
+    environment the environmental one of waveform.scalar_cloud_bbh,
+    harmonic by harmonic.  A plain full-grid source model: the PE runs use
+    the relative-binning source, which requires bin-edge arguments only
+    the likelihood supplies."""
+    import bilby
+
+    return bilby.gw.WaveformGenerator(
+        duration=duration,
+        sampling_frequency=data.SAMPLE_RATE,
+        frequency_domain_source_model=(scalar_cloud_bbh if environment
+                                       else bilby.gw.source.lal_binary_black_hole),
+        parameter_conversion=bilby.gw.conversion.convert_to_lal_binary_black_hole_parameters,
+        waveform_arguments=dict(waveform_approximant=approximant,
+                                reference_frequency=data.F_LOW,
+                                minimum_frequency=data.F_LOW,
+                                **WAVEFORM_ARGUMENTS.get(approximant, {})))
+
+
 def inject_into_noise(parameters, index, duration=8,
-                      event="GW190728_064510", approximant="IMRPhenomXPHM",
+                      event="GW190728_064510", approximant=APPROXIMANT,
                       detectors=data.DETECTORS):
-    """Inject a vacuum signal into real noise; returns (ifos, trigger).
+    """Inject a signal into real noise; returns (ifos, trigger, injection).
 
     Noise segments are taken at increasing offsets after the event so each
     injection sees an independent stretch of real (non-Gaussian,
     non-stationary) detector noise.  Adding a detector leaves the others'
-    data unchanged.
+    data unchanged.  The signal is a vacuum one unless the parameters
+    include rho_phi (and alpha_cloud): then it is the environmental model.
+    It arrives at the segment's trigger time unless the parameters carry
+    their own geocent_time.
     """
-    import bilby
-
     offset = 384 + index * (duration + 8)     # clear of the real signal
     ifos, trigger = data.fetch_off_source_noise(event, offset, duration, detectors)
-
-    # Plain full-grid source model: the PE runs use the relative-binning
-    # source, which requires bin-edge arguments only the likelihood
-    # supplies -- injection must use the ordinary generator instead.
-    wfg = bilby.gw.WaveformGenerator(
-        duration=duration,
-        sampling_frequency=data.SAMPLE_RATE,
-        frequency_domain_source_model=bilby.gw.source.lal_binary_black_hole,
-        parameter_conversion=bilby.gw.conversion.convert_to_lal_binary_black_hole_parameters,
-        waveform_arguments=dict(waveform_approximant=approximant,
-                                reference_frequency=data.F_LOW,
-                                minimum_frequency=data.F_LOW))
-    injection = dict(parameters, geocent_time=trigger)
+    wfg = waveform_generator(approximant, "rho_phi" in parameters, duration)
+    injection = {"geocent_time": trigger, **parameters}
     ifos.inject_signal(waveform_generator=wfg, parameters=injection)
     return ifos, trigger, injection
 
 
-def _fetch_with_retries(params, index, duration, attempts=4, wait=90):
+def _vacuum_keys(injection):
+    """The injection parameters a vacuum-model run can be given."""
+    return {k: v for k, v in injection.items() if k not in ("alpha_cloud", "rho_phi")}
+
+
+def _fetch_with_retries(params, index, duration, approximant, attempts=4, wait=90):
     """inject_into_noise with retries: GWOSC hiccups should cost minutes,
     not the campaign."""
     for attempt in range(attempts):
         try:
-            return inject_into_noise(params, index, duration)
+            return inject_into_noise(params, index, duration, approximant=approximant)
         except Exception as exc:
             if attempt == attempts - 1:
                 raise
@@ -116,37 +151,48 @@ def _fetch_with_retries(params, index, duration, attempts=4, wait=90):
             time.sleep(wait)
 
 
-def run_campaign(n_injections=50, duration=8, detector_frame=True):
+def run_campaign(n_injections=50, duration=8, detector_frame=True,
+                 environment=None, indices=None, approximant=APPROXIMANT,
+                 parameters=None):
     """Full campaign: for each injection run vacuum + environmental PE.
+
+    environment: dict(alpha_cloud=..., rho_phi=...) to inject signals
+    that carry a scalar environment instead of vacuum ones; approximant:
+    the waveform model the signals are made with; indices restricts the
+    campaign to those of the n_injections draws; parameters: {index:
+    parameters} to inject instead of the drawn ones (script 32 aligns its
+    signals with their vacuum twins).  Either way an injection keeps the
+    noise segment that its index has in every campaign.
 
     Restartable: finished injections are read back from the results file
     (injection_lnb{tag}.json).  Returns the list of ln B values.
     """
-    tag = _tag(detector_frame)
+    tag = _tag(detector_frame, environment, approximant)
     path = Path(f"injection_lnb{tag}.json")
     done = json.loads(path.read_text()) if path.exists() else {}
 
     for i, params in enumerate(draw_injection_parameters(
             n_injections, detector_frame=detector_frame)):
         key = f"inj{i:03d}"
-        if key in done:
+        if key in done or (indices is not None and i not in indices):
             continue
+        params = dict((parameters or {}).get(i, params), **(environment or {}))
 
         # GWOSC downloads over a multi-week campaign will hit transient
         # network timeouts; retry with a pause, and skip the injection
         # rather than kill the campaign if the outage persists.
         try:
-            ifos, trigger, injection = _fetch_with_retries(params, i, duration)
+            ifos, trigger, injection = _fetch_with_retries(params, i, duration, approximant)
         except Exception as exc:
             print(f"{key}: SKIPPED -- GWOSC fetch kept failing ({exc}); "
                   f"rerun the script later to fill this one in.")
             continue
         vac = run_pe(RunConfig(label=f"{key}{tag}_vac", model="vacuum", npool=NPOOL),
-                     ifos=ifos, trigger_time=trigger, injection=injection)
+                     ifos=ifos, trigger_time=trigger, injection=_vacuum_keys(injection))
         # A vacuum injection is the rho_phi = 0 point of the environmental
         # model; bilby's post-processing evaluates the env waveform at the
         # injection parameters, so the env-model keys must be present.
-        env_injection = dict(injection, alpha_cloud=0.1, rho_phi=0.0)
+        env_injection = {"alpha_cloud": 0.1, "rho_phi": 0.0, **injection}
         env = run_pe(RunConfig(label=f"{key}{tag}_env", model="environment",
                                npool=NPOOL,
                                prior_kwargs=dict(rho_max_gcm3=RHO_MAX)),
@@ -162,7 +208,7 @@ def run_campaign(n_injections=50, duration=8, detector_frame=True):
 
 # ------------------------------------------------ superradiance-prior subset
 def select_sr_subset(agnostic_file="injection_lnb.json", n_high=3,
-                     n_typical=10):
+                     n_typical=10, keys=None):
     """Choose injections for the superradiance-prior follow-up.
 
     The agnostic background calibrates the agnostic statistic, but Roy et
@@ -170,27 +216,32 @@ def select_sr_subset(agnostic_file="injection_lnb.json", n_high=3,
     random subsample (N ~ 13 cannot measure a few-percent rate), we take
     the highest agnostic ln B draws plus a stratified sample of the rest,
     which answers the mechanistic question: does the SR prior amplify or
-    suppress noise fluctuations that already look environmental?
+    suppress noise fluctuations that already look environmental?  keys
+    takes exactly those injections instead (matched_keys: the event's own
+    background under that prior).
 
     Returns [(key, record), ...] ordered high-to-low in agnostic ln B.
     """
     data = json.loads(Path(agnostic_file).read_text())
     ranked = sorted(data.items(), key=lambda kv: kv[1]["lnb"], reverse=True)
+    if keys is not None:
+        return [(key, record) for key, record in ranked if key in keys]
     high, rest = ranked[:n_high], ranked[n_high:]
     step = max(1, len(rest) // n_typical) if n_typical else 1
     return high + rest[::step][:n_typical]
 
 
 def run_sr_campaign(tau_d_yr=1e6, duration=8, detector_frame=True,
-                    **subset_kwargs):
-    """Re-analyse selected vacuum injections under Roy et al.'s
+                    environment=None, approximant=APPROXIMANT, **subset_kwargs):
+    """Re-analyse selected injections of a campaign under Roy et al.'s
     superradiance priors (their SM Eqs. 9-10) at fixed tau_d.
 
     The cached vacuum runs are reused, so only the environmental side is
     resampled.  Restartable like run_campaign, and returns only the
     selected subset, never stray entries left in the results file.
+    environment and approximant select the campaign, as in run_campaign.
     """
-    tag = _tag(detector_frame)
+    tag = _tag(detector_frame, environment, approximant)
     path = Path(f"injection_sr_lnb{tag}.json")
     done = json.loads(path.read_text()) if path.exists() else {}
     subset = select_sr_subset(f"injection_lnb{tag}.json", **subset_kwargs)
@@ -206,14 +257,14 @@ def run_sr_campaign(tau_d_yr=1e6, duration=8, detector_frame=True,
 
         try:
             ifos, trigger, injection = _fetch_with_retries(
-                params, index, duration)
+                params, index, duration, approximant)
         except Exception as exc:
             print(f"{key}: SKIPPED -- GWOSC fetch kept failing ({exc})")
             continue
 
         vac = run_pe(RunConfig(label=f"{key}{tag}_vac", model="vacuum", npool=NPOOL),
-                     ifos=ifos, trigger_time=trigger, injection=injection)
-        env_injection = dict(injection, alpha_cloud=0.1, rho_phi=0.0)
+                     ifos=ifos, trigger_time=trigger, injection=_vacuum_keys(injection))
+        env_injection = {"alpha_cloud": 0.1, "rho_phi": 0.0, **injection}
         env = run_pe(RunConfig(label=f"{key}{tag}_env_sr", model="environment",
                                npool=NPOOL,
                                prior_kwargs=dict(
@@ -271,22 +322,49 @@ def plot_sr_comparison(sr_results, observed_sr, name="injection_sr_comparison",
     return fig
 
 
-def background(tag=""):
+def background(tag="", min_ess=30):
     """{key: (agnostic ln B, superradiance ln B or None)} of a campaign as
-    the paper quotes them: for the full-grid likelihood (H1+L1 entries of
+    the paper quotes them: for the exact likelihood (H1+L1 entries of
     script 30's injection_virgo file) once those cover the campaign, else
-    relative binning plus the mass-cut offset."""
+    as sampled plus the mass-cut offset.  A run whose reweighting
+    collapses onto a few samples (effective sample size below min_ess:
+    the glitch segment under agnostic priors) keeps its sampled value."""
     campaign = json.loads(Path(f"injection_lnb{tag}.json").read_text())
-    exact = Path(f"injection_virgo{tag}.json")
-    exact = json.loads(exact.read_text()) if exact.exists() else {}
-    if set(exact) >= set(campaign):
-        return {k: (v["H1+L1"]["agnostic"]["lnb"],
-                    v["H1+L1"].get("superradiance", {}).get("lnb")) for k, v in exact.items()}
     offset = mass_cut_offset()
     sr = Path(f"injection_sr_lnb{tag}.json")
     sr = json.loads(sr.read_text()) if sr.exists() else {}
-    return {k: (v["lnb"] + offset, sr[k]["lnb_sr"] + offset if k in sr else None)
-            for k, v in campaign.items()}
+    sampled = {k: (v["lnb"] + offset, sr[k]["lnb_sr"] + offset if k in sr else None)
+               for k, v in campaign.items()}
+    exact = Path(f"injection_virgo{tag}.json")
+    exact = json.loads(exact.read_text()) if exact.exists() else {}
+    if not set(exact) >= set(campaign):
+        return sampled
+    pick = lambda entry, fallback: entry["lnb"] if entry and entry["ess"] >= min_ess else fallback
+    return {k: (pick(exact[k]["H1+L1"]["agnostic"], sampled[k][0]),
+                pick(exact[k]["H1+L1"].get("superradiance"), sampled[k][1])) for k in campaign}
+
+
+def network_snr(tag=""):
+    """{key: H1+L1 optimal signal-to-noise ratio of the injected signal}
+    of a vacuum campaign.  ln B depends on it above all: a signal too
+    weak to constrain the density gives ln B ~ 0, a loud one is pushed
+    negative by the prior volume it rules out.  Computed once (the noise
+    comes from the local cache) and stored in injection_snr{tag}.json."""
+    path = Path(f"injection_snr{tag}.json")
+    if path.exists():
+        return json.loads(path.read_text())
+    out = {}
+    for index, parameters in enumerate(draw_injection_parameters(50, detector_frame=bool(tag))):
+        ifos, _, _ = inject_into_noise(parameters, index)
+        out[f"inj{index:03d}"] = float(np.hypot(*[abs(ifo.meta_data["optimal_SNR"]) for ifo in ifos]))
+    path.write_text(json.dumps(out, indent=1))
+    return out
+
+
+def matched_keys(tag=""):
+    """The clean injections of a campaign as loud as GW190728."""
+    return {key for key, snr in network_snr(tag).items()
+            if abs(snr - EVENT_SNR) <= MATCH and key != GLITCH}
 
 
 def false_alarm_probability(lnb_values, threshold):

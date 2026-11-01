@@ -17,7 +17,7 @@ import pandas as pd
 sys.path.insert(0, ".")
 import bilby
 bilby.core.utils.logger.setLevel("ERROR")
-from scalar_env.inference import RunConfig, build_priors, OUTDIR
+from scalar_env.inference import RunConfig, build_priors, exact_posterior
 from scalar_env.waveform import scalar_mass_ev
 
 np.random.seed(2)
@@ -25,9 +25,7 @@ KEYS = ("chirp_mass", "mass_ratio", "alpha_cloud", "rho_phi")
 LABELS = ["gw190728_env", "gw190728_env_seed1", "gw190728_env_seed2",
           "gw190728_env_rho_max2e8"]
 
-post = pd.concat([bilby.result.read_in_result(
-    str(OUTDIR / l / f"{l}_result.json")).posterior for l in LABELS],
-    ignore_index=True)
+post = pd.concat([exact_posterior(l) for l in LABELS], ignore_index=True)   # exact likelihood (script 17)
 pri = build_priors(RunConfig(label="_", model="environment",
                              prior_kwargs=dict(rho_max_gcm3=2e8)), 1248331528.5)
 s = {k: np.asarray(pri[k].sample(2_000_000)) for k in KEYS}

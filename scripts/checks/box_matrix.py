@@ -1,15 +1,15 @@
 """Box-truncation identity between every pair of agnostic box runs:
-predict ln B(small box) from the larger-box run's posterior and prior."""
+predict ln B(small box) from the larger-box run's posterior and prior.
+Evidences and posteriors are those of the exact likelihood (script 17)."""
 import json, sys
 from pathlib import Path
 import numpy as np, pandas as pd
 sys.path.insert(0, ".")
 import bilby
-from scalar_env.inference import RunConfig, build_priors, mass_cut_offset, OUTDIR
+from scalar_env.inference import RunConfig, build_priors, exact_posterior
 bilby.core.utils.logger.setLevel("ERROR")
 KEYS = ("chirp_mass", "mass_ratio", "alpha_cloud", "rho_phi")
-OFF = mass_cut_offset()
-LNB = {l: b + OFF for l, b, _ in json.loads(Path("robustness_lnb.json").read_text())}
+LNB = {l: v["exact"] for l, v in json.loads(Path("reweighted_lnb.json").read_text())["lnb"].items()}
 runs = {2e8: ["gw190728_env", "gw190728_env_seed1", "gw190728_env_seed2", "gw190728_env_rho_max2e8"],
         1e8: ["gw190728_env_rho_max1e8"], 1e7: ["gw190728_env_rho_max1e7"],
         1e6: ["gw190728_env_rho_max1e6"]}
@@ -19,8 +19,7 @@ for big, labels in runs.items():
     pri = build_priors(RunConfig(label="_", model="environment", prior_kwargs=dict(rho_max_gcm3=big)), 0.0)
     d = {k: np.asarray(pri[k].sample(2_000_000)) for k in KEYS}
     ok = np.asarray(pri.evaluate_constraints(d), bool)
-    post = pd.concat([bilby.result.read_in_result(str(OUTDIR / l / f"{l}_result.json")).posterior
-                      for l in labels], ignore_index=True)
+    post = pd.concat([exact_posterior(l) for l in labels], ignore_index=True)
     rho, a = post["rho_phi"].to_numpy(), post["alpha_cloud"].to_numpy()
     row = []
     for small in (1e8, 1e7, 3e6, 1e6, 3e5):
